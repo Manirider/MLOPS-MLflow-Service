@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlops-mlflow
+  namespace: default
+  labels:
+    app: mlops-mlflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlops-mlflow
+  template:
+    metadata:
+      labels:
+        app: mlops-mlflow
+    spec:
+      containers:
+        - name: mlops-mlflow
+          image: mlops-mlflow-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          command:
+            [
+              "mlflow",
+              "server",
+              "--backend-store-uri",
+              "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@mlops-postgres:5432/$(POSTGRES_DB)",
+              "--default-artifact-root",
+              "/mlflow-artifacts",
+              "--host",
+              "0.0.0.0",
+            ]
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: mlops-secrets
+                  key: postgres-db
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mlops-secrets
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mlops-secrets
+                  key: postgres-password
+          volumeMounts:
+            - name: mlflow-artifacts
+              mountPath: /mlflow-artifacts
+      volumes:
+        - name: mlflow-artifacts
+          persistentVolumeClaim:
+            claimName: mlflow-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlops-mlflow
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: mlops-mlflow
+  ports:
+    - port: 5000
+      targetPort: 5000

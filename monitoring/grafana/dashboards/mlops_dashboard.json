@@ -1,0 +1,20 @@
+{
+  "title": "MLOps Platform Dashboard",
+  "panels": [
+    {
+      "title": "API Request Rate",
+      "type": "graph",
+      "targets": [{"expr": "rate(http_requests_total[1m])"}]
+    },
+    {
+      "title": "API Latency (95th Percentile)",
+      "type": "graph",
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m]) by (le)))"}]
+    },
+    {
+      "title": "Training Runs (Success)",
+      "type": "stat",
+      "targets": [{"expr": "sum(mlflow_run_status{status='FINISHED'})"}]
+    }
+  ]
+}

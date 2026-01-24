@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlops-worker
+  namespace: default
+  labels:
+    app: mlops-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlops-worker
+  template:
+    metadata:
+      labels:
+        app: mlops-worker
+    spec:
+      containers:
+        - name: mlops-worker
+          image: mlops-api:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            [
+              "celery",
+              "-A",
+              "app.worker.celery_app",
+              "worker",
+              "--loglevel=info",
+            ]
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: mlops-secrets
+                  key: postgres-db
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mlops-secrets
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mlops-secrets
+                  key: postgres-password
+            - name: MLFLOW_TRACKING_URI
+              value: "http://mlops-mlflow:5000"
+            - name: REDIS_HOST
+              value: "mlops-redis"
+          resources:
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+            requests:
+              memory: "512Mi"
+              cpu: "500m"

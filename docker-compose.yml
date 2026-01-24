@@ -1,0 +1,156 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:13
+    container_name: mlops_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mlflow_db}
+      POSTGRES_USER: ${POSTGRES_USER:-mlflow_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mlflow_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlflow_user} -d ${POSTGRES_DB:-mlflow_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mlops_network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.0
+    container_name: mlops_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - mlops_network
+    restart: unless-stopped
+
+  mlflow_server:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.mlflow
+    container_name: mlops_mlflow
+    command: >
+      --backend-store-uri postgresql://${POSTGRES_USER:-mlflow_user}:${POSTGRES_PASSWORD:-mlflow_password}@postgres:5432/${POSTGRES_DB:-mlflow_db}
+      --default-artifact-root /mlruns
+      --host 0.0.0.0
+      --port 5000
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - ./mlruns:/mlruns
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/health')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - mlops_network
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: mlops_api
+    env_file:
+      - .env
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow_server:5000
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./mlruns:/mlruns
+      - ./ml_core:/app/ml_core
+      - ./data:/app/data
+      - ./tests:/app/tests
+    depends_on:
+      mlflow_server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - mlops_network
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: mlops_worker
+    command: celery -A app.worker.celery_app worker --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow_server:5000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./api:/app
+      - ./ml_core:/app/ml_core
+      - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_started
+      api:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    networks:
+      - mlops_network
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: mlops_prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    networks:
+      - mlops_network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: mlops_grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    networks:
+      - mlops_network
+    restart: unless-stopped
+
+networks:
+  mlops_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:

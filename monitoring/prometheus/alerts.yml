@@ -1,0 +1,38 @@
+groups:
+  - name: model_drift_alerts
+    rules:
+      - alert: ModelDriftDetected
+        expr: mlops_drift_psi > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Model drift detected"
+          description: "PSI value {{ $value }} exceeds threshold 0.2. Model may need retraining."
+
+      - alert: ModelDriftCritical
+        expr: mlops_drift_psi > 0.25
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical model drift detected"
+          description: "PSI value {{ $value }} indicates significant drift. Immediate attention required."
+
+      - alert: LowPredictionConfidence
+        expr: avg(mlops_prediction_confidence) < 0.7
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low average prediction confidence"
+          description: "Average prediction confidence is {{ $value }}, which is below the 0.7 threshold."
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, http_request_duration_seconds_bucket{handler=~"/predict.*"}) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High prediction latency"
+          description: "95th percentile latency for predictions is above 2 seconds."
