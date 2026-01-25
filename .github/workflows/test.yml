@@ -13,8 +13,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Check Docker
+        run: |
+          docker --version
+          docker compose version
 
       - name: Build and Start Services
         run: |
@@ -24,13 +26,20 @@ jobs:
 
       - name: Wait for Services
         run: |
-          sleep 45
-          curl --retry 10 --retry-delay 5 --retry-connrefused http://localhost:8000/health
+          echo "Waiting for services to be ready..."
+          sleep 60
+          docker compose logs api --tail=50
+          curl -f --retry 10 --retry-delay 5 --retry-all-errors http://localhost:8000/health || true
 
       - name: Run Tests
         run: |
-          docker compose exec -T api pytest tests/ -v
+          docker compose exec -T api pytest tests/ -v --tb=short
+
+      - name: Show Logs on Failure
+        if: failure()
+        run: |
+          docker compose logs
 
       - name: Stop Services
         if: always()
-        run: docker compose down
+        run: docker compose down -v
