@@ -1,36 +1,36 @@
 name: MLOps CI
 
 on:
-    push:
-        branches: [main]
-    pull_request:
-        branches: [main]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-    test:
-        runs-on: ubuntu-latest
+  test:
+    runs-on: ubuntu-latest
 
-        steps:
-            - uses: actions/checkout@v3
+    steps:
+      - uses: actions/checkout@v4
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-            - name: Build and Start Services
-              run: |
-                  cp .env.example .env
-                  docker-compose up -d --build
-                  docker-compose ps
+      - name: Build and Start Services
+        run: |
+          cp .env.example .env
+          docker compose up -d --build
+          docker compose ps
 
-            - name: Wait for Services
-              run: |
-                  sleep 30
-                  curl --retry 5 --retry-delay 5 --retry-connrefused http://localhost:8000/health
+      - name: Wait for Services
+        run: |
+          sleep 45
+          curl --retry 10 --retry-delay 5 --retry-connrefused http://localhost:8000/health
 
-            - name: Run Tests
-              run: |
-                  docker-compose exec -T api pytest tests/ -v
+      - name: Run Tests
+        run: |
+          docker compose exec -T api pytest tests/ -v
 
-            - name: Stop Services
-              if: always()
-              run: docker-compose down
+      - name: Stop Services
+        if: always()
+        run: docker compose down
