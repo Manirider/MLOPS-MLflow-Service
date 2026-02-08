@@ -1,15 +1,12 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 from enum import Enum
-
 class TrainingStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
-
 class TrainRequest(BaseModel):
-
     learning_rate: float = Field(
         default=0.001,
         ge=0.00001,
@@ -48,7 +45,6 @@ class TrainRequest(BaseModel):
         default=None,
         description="Optional name for this training run"
     )
-
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -64,15 +60,12 @@ class TrainRequest(BaseModel):
             ]
         }
     }
-
 class TrainResponse(BaseModel):
-
     message: str = Field(description="Status message")
     job_id: str = Field(description="Internal Training Job ID")
     run_id: Optional[str] = Field(default=None, description="MLflow run ID")
     experiment_name: str = Field(description="MLflow experiment name")
     status: TrainingStatus = Field(description="Training job status")
-
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -85,9 +78,7 @@ class TrainResponse(BaseModel):
             ]
         }
     }
-
 class TrainStatusResponse(BaseModel):
-
     run_id: str = Field(description="MLflow run ID")
     status: TrainingStatus = Field(description="Current training status")
     metrics: Optional[dict] = Field(default=None, description="Training metrics if available")

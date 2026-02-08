@@ -7,41 +7,28 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-
 import numpy as np
 import mlflow
 import mlflow.sklearn
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-
 def set_seeds(seed: int):
     np.random.seed(seed)
-
-
 def load_mnist_data(data_dir: str = "./data"):
     os.makedirs(data_dir, exist_ok=True)
-
     print("Loading MNIST dataset...")
     mnist = fetch_openml('mnist_784', version=1,
                          as_frame=False, data_home=data_dir)
-
     X = mnist.data.astype('float32') / 255.0
     y = mnist.target.astype('int')
-
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
-
     print(f"Training set: {X_train.shape[0]} samples")
     print(f"Test set: {X_test.shape[0]} samples")
-
     return X_train, X_test, y_train, y_test
-
-
 def train_model(
     learning_rate: float = 0.001,
     epochs: int = 10,
@@ -53,15 +40,10 @@ def train_model(
     run_name: str = None,
 ) -> str:
     set_seeds(random_seed)
-
     config = get_config()
-
     mlflow.set_tracking_uri(config.mlflow_tracking_uri)
-
     mlflow.set_experiment(experiment_name)
-
     X_train, X_test, y_train, y_test = load_mnist_data(config.data_dir)
-
     model = MNISTClassifier(
         hidden_layer_sizes=(hidden_size, hidden_size // 2),
         learning_rate_init=learning_rate,
@@ -72,7 +54,6 @@ def train_model(
         early_stopping=True,
         validation_fraction=0.1,
     )
-
     with mlflow.start_run(run_name=run_name) as run:
         mlflow.log_param("learning_rate", learning_rate)
         mlflow.log_param("epochs", epochs)
@@ -83,51 +64,37 @@ def train_model(
         mlflow.log_param("model_type", "MLPClassifier")
         mlflow.log_param("hidden_layer_sizes",
                          f"({hidden_size}, {hidden_size // 2})")
-
         print(f"\nTraining model with run_id: {run.info.run_id}")
         print(
             f"Parameters: lr={learning_rate}, epochs={epochs}, batch_size={batch_size}")
-
         model.fit(X_train, y_train)
-
         metrics = evaluate_model(model, X_test, y_test)
-
         for metric_name, metric_value in metrics.items():
             mlflow.log_metric(metric_name, metric_value)
             print(f"  {metric_name}: {metric_value:.4f}")
-
         mlflow.sklearn.log_model(
             model,
             "model",
             registered_model_name=None,
         )
-
         try:
-
             print("ONNX export skipped: Model is sklearn pipeline, requires skl2onnx.")
         except Exception as e:
             print(f"ONNX export failed: {e}")
-
         with tempfile.TemporaryDirectory() as tmpdir:
             save_training_artifacts(
                 model, X_test, y_test,
                 output_dir=tmpdir,
                 run_id=run.info.run_id
             )
-
             for artifact_file in Path(tmpdir).glob("*"):
                 mlflow.log_artifact(str(artifact_file))
-
         print(f"\nTraining complete. Run ID: {run.info.run_id}")
         print(f"View at: {config.mlflow_tracking_uri}")
-
         return run.info.run_id
-
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Train MNIST classifier with MLflow tracking")
-
     parser.add_argument(
         "--learning-rate", "-lr",
         type=float,
@@ -176,13 +143,9 @@ def parse_args():
         default=None,
         help="Optional name for this run"
     )
-
     return parser.parse_args()
-
-
 if __name__ == "__main__":
     args = parse_args()
-
     run_id = train_model(
         learning_rate=args.learning_rate,
         epochs=args.epochs,
@@ -193,5 +156,4 @@ if __name__ == "__main__":
         experiment_name=args.experiment_name,
         run_name=args.run_name,
     )
-
     print(f"\nRun ID: {run_id}")

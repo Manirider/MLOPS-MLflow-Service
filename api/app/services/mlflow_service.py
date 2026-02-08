@@ -1,43 +1,33 @@
 import logging
 from typing import List, Optional, Dict, Any
 from functools import lru_cache
-
 import mlflow
 from mlflow.tracking import MlflowClient
 from mlflow.exceptions import MlflowException
 from tenacity import retry, stop_after_attempt, wait_exponential
-
 from app.config import get_settings
-
 logger = logging.getLogger(__name__)
-
 class MLflowService:
-
     def __init__(self):
         self.settings = get_settings()
         self._client: Optional[MlflowClient] = None
         self._initialize_mlflow()
-
     def _initialize_mlflow(self):
         mlflow.set_tracking_uri(self.settings.mlflow_tracking_uri)
         logger.info(f"MLflow tracking URI set to: {self.settings.mlflow_tracking_uri}")
-
     @property
     def client(self) -> MlflowClient:
         if self._client is None:
             self._client = MlflowClient(self.settings.mlflow_tracking_uri)
         return self._client
-
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=10))
     def get_or_create_experiment(self, name: str) -> str:
         experiment = self.client.get_experiment_by_name(name)
         if experiment:
             return experiment.experiment_id
         return self.client.create_experiment(name)
-
     def list_experiments(self) -> List[Dict[str, Any]]:
         experiments = []
-
         for exp in self.client.search_experiments():
             exp_info = {
                 "experiment_id": exp.experiment_id,
@@ -45,7 +35,6 @@ class MLflowService:
                 "artifact_location": exp.artifact_location,
                 "lifecycle_stage": exp.lifecycle_stage,
             }
-
             runs = self.client.search_runs(
                 experiment_ids=[exp.experiment_id],
                 max_results=1,
@@ -54,7 +43,6 @@ class MLflowService:
                 experiment_ids=[exp.experiment_id],
                 max_results=1000,
             ))
-
             if runs:
                 best_runs = self.client.search_runs(
                     experiment_ids=[exp.experiment_id],
@@ -72,23 +60,18 @@ class MLflowService:
                         "metrics": dict(best.data.metrics),
                         "params": dict(best.data.params),
                     }
-
             experiments.append(exp_info)
-
         return experiments
-
     def get_experiment_by_name(self, name: str) -> Optional[Dict[str, Any]]:
         exp = self.client.get_experiment_by_name(name)
         if not exp:
             return None
-
         return {
             "experiment_id": exp.experiment_id,
             "name": exp.name,
             "artifact_location": exp.artifact_location,
             "lifecycle_stage": exp.lifecycle_stage,
         }
-
     def search_runs(
         self,
         experiment_ids: List[str],
@@ -102,7 +85,6 @@ class MLflowService:
             order_by=order_by or [],
             max_results=max_results,
         )
-
         return [
             {
                 "run_id": run.info.run_id,
@@ -115,7 +97,6 @@ class MLflowService:
             }
             for run in runs
         ]
-
     def get_run(self, run_id: str) -> Optional[Dict[str, Any]]:
         try:
             run = self.client.get_run(run_id)
@@ -131,19 +112,15 @@ class MLflowService:
             }
         except MlflowException:
             return None
-
     def list_registered_models(self) -> List[Dict[str, Any]]:
         models = []
-
         for rm in self.client.search_registered_models():
             versions = self.client.get_latest_versions(rm.name)
-
             latest_version = None
             latest_stage = None
             if versions:
                 latest_version = versions[0].version
                 latest_stage = versions[0].current_stage
-
             model_info = {
                 "name": rm.name,
                 "description": rm.description,
@@ -163,15 +140,12 @@ class MLflowService:
                 ],
             }
             models.append(model_info)
-
         return models
-
     def get_production_model(self, model_name: str) -> Optional[Dict[str, Any]]:
         try:
             versions = self.client.get_latest_versions(model_name, stages=["Production"])
             if not versions:
                 return None
-
             v = versions[0]
             return {
                 "name": model_name,
@@ -183,7 +157,6 @@ class MLflowService:
             }
         except MlflowException:
             return None
-
     def transition_model_stage(
         self,
         model_name: str,
@@ -197,7 +170,6 @@ class MLflowService:
             stage=stage,
             archive_existing_versions=archive_existing,
         )
-
 @lru_cache()
 def get_mlflow_service() -> MLflowService:
     return MLflowService()

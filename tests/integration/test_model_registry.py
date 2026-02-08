@@ -1,8 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-
 class TestModelRegistryIntegration:
-
     def test_model_registered_after_training(self, client):
         with patch('app.routes.models.get_mlflow_service') as mock_get_service:
             mock_service = MagicMock()
@@ -23,16 +21,12 @@ class TestModelRegistryIntegration:
                 }
             ]
             mock_get_service.return_value = mock_service
-
             response = client.get("/models")
-
             assert response.status_code == 200
             data = response.json()
             assert data["total_count"] >= 1
-
             model = data["models"][0]
             assert model["name"] == "MNISTClassifier"
-
     def test_model_version_increments(self, client):
         with patch('app.routes.models.get_mlflow_service') as mock_get_service:
             mock_service = MagicMock()
@@ -49,43 +43,34 @@ class TestModelRegistryIntegration:
                 }
             ]
             mock_get_service.return_value = mock_service
-
             response = client.get("/models")
-
             assert response.status_code == 200
             data = response.json()
             assert data["models"][0]["latest_version"] == "3"
-
     def test_stage_transition_to_staging(self, client):
         with patch('app.routes.models.get_mlflow_service') as mock_get_service:
             mock_service = MagicMock()
             mock_get_service.return_value = mock_service
-
             response = client.post("/models/transition", json={
                 "model_name": "MNISTClassifier",
                 "version": "1",
                 "stage": "Staging",
             })
-
             assert response.status_code == 200
             data = response.json()
             assert data["stage"] == "Staging"
-
     def test_stage_transition_to_production(self, client):
         with patch('app.routes.models.get_mlflow_service') as mock_get_service:
             mock_service = MagicMock()
             mock_get_service.return_value = mock_service
-
             response = client.post("/models/transition", json={
                 "model_name": "MNISTClassifier",
                 "version": "1",
                 "stage": "Production",
             })
-
             assert response.status_code == 200
             data = response.json()
             assert data["stage"] == "Production"
-
     def test_multiple_models_supported(self, client):
         with patch('app.routes.models.get_mlflow_service') as mock_get_service:
             mock_service = MagicMock()
@@ -95,9 +80,7 @@ class TestModelRegistryIntegration:
                 {"name": "Model3", "latest_version": "1", "latest_stage": "None", "versions": []},
             ]
             mock_get_service.return_value = mock_service
-
             response = client.get("/models")
-
             assert response.status_code == 200
             data = response.json()
             assert data["total_count"] == 3

@@ -3,9 +3,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
-
 class MNISTClassifier(BaseEstimator, ClassifierMixin):
-
     def __init__(
         self,
         hidden_layer_sizes: tuple = (128, 64),
@@ -25,10 +23,8 @@ class MNISTClassifier(BaseEstimator, ClassifierMixin):
         self.random_state = random_state
         self.early_stopping = early_stopping
         self.validation_fraction = validation_fraction
-
         self._pipeline = None
         self._classes = None
-
     def _build_pipeline(self):
         classifier = MLPClassifier(
             hidden_layer_sizes=self.hidden_layer_sizes,
@@ -43,42 +39,30 @@ class MNISTClassifier(BaseEstimator, ClassifierMixin):
             activation='relu',
             verbose=False,
         )
-
         self._pipeline = Pipeline([
             ('scaler', StandardScaler()),
             ('classifier', classifier)
         ])
-
         return self._pipeline
-
     def fit(self, X, y):
         X_flat = X.reshape(X.shape[0], -1) if len(X.shape) > 2 else X
-
         self._classes = np.unique(y)
-
         if self._pipeline is None:
             self._build_pipeline()
-
         self._pipeline.fit(X_flat, y)
-
         return self
-
     def predict(self, X):
         X_flat = X.reshape(X.shape[0], -1) if len(X.shape) > 2 else X
         return self._pipeline.predict(X_flat)
-
     def predict_proba(self, X):
         X_flat = X.reshape(X.shape[0], -1) if len(X.shape) > 2 else X
         return self._pipeline.predict_proba(X_flat)
-
     def score(self, X, y):
         X_flat = X.reshape(X.shape[0], -1) if len(X.shape) > 2 else X
         return self._pipeline.score(X_flat, y)
-
     @property
     def classes_(self):
         return self._classes
-
     def get_params(self, deep=True):
         return {
             'hidden_layer_sizes': self.hidden_layer_sizes,
@@ -90,7 +74,6 @@ class MNISTClassifier(BaseEstimator, ClassifierMixin):
             'early_stopping': self.early_stopping,
             'validation_fraction': self.validation_fraction,
         }
-
     def set_params(self, **params):
         for key, value in params.items():
             setattr(self, key, value)

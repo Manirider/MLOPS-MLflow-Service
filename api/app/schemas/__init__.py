@@ -18,7 +18,6 @@ from app.schemas.predict import (
     BatchPredictRequest,
     BatchPredictResponse,
 )
-
 __all__ = [
     "TrainRequest",
     "TrainResponse",

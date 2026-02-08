@@ -1,11 +1,8 @@
 import os
 import sys
 from unittest.mock import MagicMock, patch, AsyncMock
-
 import pytest
 from fastapi.testclient import TestClient
-
-
 @pytest.fixture(scope="session", autouse=True)
 def setup_environment():
     os.environ.setdefault("MLFLOW_TRACKING_URI", "http://mlflow_server:5000")
@@ -13,28 +10,19 @@ def setup_environment():
     os.environ.setdefault("MODEL_NAME", "TestModel")
     os.environ.setdefault("API_KEY", "mlops-secret-key-123")
     yield
-
-
 @pytest.fixture
 def app():
     from app.main import app as fastapi_app
     return fastapi_app
-
-
 @pytest.fixture
 def client(app):
     return TestClient(app)
-
-
 @pytest.fixture
 def auth_headers():
     return {"X-API-Key": "mlops-secret-key-123"}
-
-
 @pytest.fixture
 def mock_mlflow_service():
     mock = MagicMock()
-
     mock.list_experiments.return_value = [
         {
             "experiment_id": "1",
@@ -51,7 +39,6 @@ def mock_mlflow_service():
             },
         }
     ]
-
     mock.list_registered_models.return_value = [
         {
             "name": "MNISTClassifier",
@@ -68,21 +55,16 @@ def mock_mlflow_service():
             ],
         }
     ]
-
     mock.get_production_model.return_value = {
         "name": "MNISTClassifier",
         "version": "1",
         "stage": "Production",
         "run_id": "abc123",
     }
-
     return mock
-
-
 @pytest.fixture
 def mock_training_service():
     mock = MagicMock()
-
     class MockJob:
         job_id = "job_000001"
         run_id = "run_abc123"
@@ -92,18 +74,13 @@ def mock_training_service():
         completed_at = None
         error = None
         params = {"learning_rate": 0.001}
-
     mock.start_training = AsyncMock(return_value=MockJob())
     mock.get_job.return_value = MockJob()
     mock.list_jobs.return_value = [MockJob()]
-
     return mock
-
-
 @pytest.fixture
 def mock_inference_service():
     mock = MagicMock()
-
     mock.predict.return_value = {
         "prediction": 7,
         "confidence": 0.98,
@@ -112,7 +89,6 @@ def mock_inference_service():
         "model_version": "1",
         "model_stage": "Production",
     }
-
     mock.predict_batch.return_value = {
         "predictions": [7, 3, 5],
         "confidences": [0.98, 0.95, 0.92],
@@ -120,17 +96,12 @@ def mock_inference_service():
         "model_version": "1",
         "batch_size": 3,
     }
-
     return mock
-
-
 @pytest.fixture
 def sample_mnist_image():
     import numpy as np
     np.random.seed(42)
     return (np.random.rand(784) * 255).tolist()
-
-
 @pytest.fixture
 def sample_train_request():
     return {
@@ -142,8 +113,6 @@ def sample_train_request():
         "experiment_name": "Test_Experiments",
         "run_name": "test_run",
     }
-
-
 @pytest.fixture
 def sample_predict_request(sample_mnist_image):
     return {"image": sample_mnist_image}

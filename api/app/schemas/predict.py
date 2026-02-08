@@ -1,19 +1,15 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Union
-
 class PredictRequest(BaseModel):
-
     image: List[float] = Field(
         description="Flattened image pixel data (784 values for 28x28 MNIST image)"
     )
-
     @field_validator('image')
     @classmethod
     def validate_image_size(cls, v):
         if len(v) != 784:
             raise ValueError(f"Image must have 784 pixels (28x28), got {len(v)}")
         return v
-
     @field_validator('image')
     @classmethod
     def validate_pixel_values(cls, v):
@@ -21,7 +17,6 @@ class PredictRequest(BaseModel):
             if not 0 <= pixel <= 255:
                 raise ValueError(f"Pixel {i} value {pixel} out of range [0, 255]")
         return v
-
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -31,9 +26,7 @@ class PredictRequest(BaseModel):
             ]
         }
     }
-
 class PredictResponse(BaseModel):
-
     prediction: int = Field(
         ge=0,
         le=9,
@@ -50,7 +43,6 @@ class PredictResponse(BaseModel):
     model_name: str = Field(description="Model used for prediction")
     model_version: str = Field(description="Model version used")
     model_stage: str = Field(description="Model stage (e.g., Production)")
-
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -65,13 +57,10 @@ class PredictResponse(BaseModel):
             ]
         }
     }
-
 class BatchPredictRequest(BaseModel):
-
     images: List[List[float]] = Field(
         description="List of flattened image pixel arrays"
     )
-
     @field_validator('images')
     @classmethod
     def validate_batch(cls, v):
@@ -83,9 +72,7 @@ class BatchPredictRequest(BaseModel):
             if len(img) != 784:
                 raise ValueError(f"Image {i} must have 784 pixels, got {len(img)}")
         return v
-
 class BatchPredictResponse(BaseModel):
-
     predictions: List[int] = Field(description="Predicted classes for all images")
     confidences: List[float] = Field(description="Confidence scores for all predictions")
     model_name: str = Field(description="Model used for prediction")
