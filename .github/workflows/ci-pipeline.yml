@@ -18,14 +18,12 @@ jobs:
       - name: Start Environment
         run: |
           cp .env.example .env
-          docker compose up -d --build
-          echo "Waiting 30s for services..."
-          sleep 30
-
+          docker compose up -d --build --wait
+          
       - name: Verify Health
         run: |
           docker compose ps
-          curl --fail --retry 5 --retry-delay 5 http://localhost:8000/health
+          curl --fail --retry 10 --retry-delay 5 --retry-connrefused http://localhost:8000/health
 
       - name: Run Validation
         run: |
